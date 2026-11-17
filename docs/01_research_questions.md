@@ -48,31 +48,31 @@
 
 在 FFNDS 中，Q1r2 通过锚点与割线（固定增益）近似 FFN 的有限增量：
 
-\[
+$
 \widehat F(u_t)=F(u_a)+W_2\operatorname{Diag}(\alpha)W_1(u_t-u_a).
-\]
+$
 
-这说明研究 FFN 时，应同时看其**读取方向、非线性响应斜率、输出写入方向**。此处仅借用“有限增量/割线”数学视角；本项目改为研究同一去噪状态下有/无某个内部写入的**反事实差分**，直接计算真实 FFN 响应。Q1r2 的固定增益 \(\alpha\)、历史缓存、质量/效率实验、FFNDS 版本与加速目标均不迁入 FFNmotion。
+这说明研究 FFN 时，应同时看其**读取方向、非线性响应斜率、输出写入方向**。此处仅借用“有限增量/割线”数学视角；本项目改为研究同一去噪状态下有/无某个内部写入的**反事实差分**，直接计算真实 FFN 响应。Q1r2 的固定增益 $\alpha$、历史缓存、质量/效率实验、FFNDS 版本与加速目标均不迁入 FFNmotion。
 
 本文对 Q1r2 的描述属于概念层比较；若需逐行核对其当时的仓库实现，应另行绑定相应提交。
 
 ## 4. 中心数学与科学命题
 
-固定条件 \(\omega=(\text{model},\text{prompt},\text{seed},\text{sampler},s,\ell,\text{CFG branch})\)。设源 head 的贡献为 \(U_h\)，局部输出为 \(B_\omega^+\) 与 \(B_\omega^-\)。
+固定条件 $\omega=(\text{model},\text{prompt},\text{seed},\text{sampler},s,\ell,\text{CFG branch})$。设源 head 的贡献为 $U_h$，局部输出为 $B_\omega^+$ 与 $B_\omega^-$。
 
 **局部算子命题**：在 Wan2.1 的同层 FFN 中，可将其精确分解为
 
-\[
+$
 B_\omega^+-B_\omega^-=U_h+\sum_{j=1}^{m}D_{hj}.
-\]
+$
 
-**生成行为命题**：把上述写入沿完整下游网络和采样器传播后，最终视频的运动观测 \(\mathcal M\) 是否发生可重复的差异？
+**生成行为命题**：把上述写入沿完整下游网络和采样器传播后，最终视频的运动观测 $\mathcal M$ 是否发生可重复的差异？
 
-\[
+$
 \Delta \mathcal M_h=
 \mathcal M(\mathcal G_\omega(B_\omega^+))-
 \mathcal M(\mathcal G_\omega(B_\omega^-)).
-\]
+$
 
 这两个命题之间存在非线性网络、跨帧注意力和积分器，不能由局部恒等式直接推断最终行为。
 
