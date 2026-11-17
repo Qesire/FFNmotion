@@ -65,9 +65,9 @@
 
 主要关系：
 
-$
+$$
 B^+-B^-=U_h+\sum_jD_{hj}.
-$
+$$
 
 严格的数值 oracle：原生 block 两种路径的差分与独立重建差分一致。记录最大绝对误差、相对 L2 误差、dtype；BF16 不硬套 FP64 的理论精度。
 
@@ -98,9 +98,9 @@ $
 
 执行四组：
 
-$
+$$
 B(0,\varnothing),\quad B(1,\varnothing),\quad B(0,S),\quad B(1,S),
-$
+$$
 
 其中 $B(d,S)=B^-+dU_h+\sum_{j\in S}D_{hj}$。
 
