@@ -24,24 +24,24 @@
 
 Wan2.1 的该 block 先执行 self-attention 残差：
 
-$
+$$
 r=x+\operatorname{SA}\big(\operatorname{norm1}(x)\odot(1+e_1)+e_0\big)\odot e_2.
-$
+$$
 
 然后 cross-attention 与 FFN：
 
-$
+$$
 c=r+\operatorname{CA}(\operatorname{norm3}(r),\,E_{\mathrm{text}}),
-$
+$$
 
-$
+$$
 u=T_s(c)=\operatorname{norm2}(c)\odot(1+e_4)+e_3,
-$
+$$
 
-$
+$$
 F(u)=W_2\phi(W_1u+b_1)+b_2,\qquad
 B(c)=c+e_5\odot F(T_s(c)).
-$
+$$
 
 这里 $\phi$ 是 Wan 的 tanh-approximate GELU；调制向量 $e_0,\ldots,e_5$ 由当前 timestep 的嵌入与层参数确定。输出投影与 FFN 内 bias 均按原源码保留。
 
@@ -51,23 +51,23 @@ $
 
 第 $h$ 个 head 的 attention 输出：
 
-$
+$$
 z_{hpa}=\sum_q A_{hpq}V_{hqa},\qquad z_{hp}\in\mathbb R^{128}.
-$
+$$
 
 输出投影 $W_O\in\mathbb R^{1536\times1536}$ 可按 head 的 128 维列块分组。定义：
 
-$
+$$
 \boxed{(U_h)_{pi}=\sum_a (W_O^{(h)})_{ia}z_{hpa}}
-$
+$$
 
 它是该 head **经过输出投影后写入残差流的向量**，而不是 attention heatmap，也不是输出投影前的 128 维 head 激活。
 
 在不修改其他 head 的局部反事实中：
 
-$
+$$
 c^+=c^-+U_h.
-$
+$$
 
 输出投影的共享 bias 在差分中抵消。实现时参考作者 [head ablation](https://github.com/Siriuslala/physics/blob/main/wan21_t2v_experiments/cross_attn_head_ablation.py)：在展平 heads、调用 `cross_attn.o` 之前置零指定 head。对 T2V 不应误用包含图像 context 的 I2V cross-attention 路径。
 
@@ -75,31 +75,31 @@ $
 
 固定 $u^\pm=T_s(c^\pm)$，记第 $j$ 个 FFN preactivation、activation：
 
-$
+$$
 a_j^\pm=w_j^\top u^\pm+b_{1,j},\qquad
 m_j^\pm=\phi(a_j^\pm).
-$
+$$
 
 head 引起的通道变化：
 
-$
+$$
 \Delta m_j=m_j^+-m_j^-.
-$
+$$
 
 第 $j$ 个通道额外产生的残差写入：
 
-$
+$$
 \boxed{D_{hj}=e_5\odot v_j\,\Delta m_j}
-$
+$$
 
 其中 $v_j=W_{2,:,j}$，$\odot$ 是逐残差维门控。
 
 因此：
 
-$
+$$
 \boxed{B(c^+)-B(c^-)=U_h+\sum_{j=1}^{m}D_{hj}}
 \tag{A}
-$
+$$
 
 **推导**：$B(c)=c+e_5\odot(\sum_jv_j\phi(w_j^\top T_s(c)+b_{1,j})+b_2)$，两状态相减后，$c$ 的差是 $U_h$，共同的 $b_2$ 抵消；其余项逐通道分解即得。式 (A) 是固定输入对上的等式，不依赖梯度线性化或训练 transcoder。
 
@@ -107,36 +107,36 @@ $
 
 定义 $\Delta u=u^+-u^-$，沿 FFN 输入直线：
 
-$
+$$
 u_\tau=u^-+\tau\Delta u,\quad 0\leq\tau\leq1.
-$
+$$
 
 令：
 
-$
+$$
 \bar\beta_{hj}=
 \int_0^1\phi'\!\left(w_j^\top u_\tau+b_{1,j}\right)\,d\tau.
-$
+$$
 
 由微积分基本定理：
 
-$
+$$
 \Delta m_j=\bar\beta_{hj}\; w_j^\top\Delta u,
-$
+$$
 
-$
+$$
 \boxed{
 F(u^+)-F(u^-)=
 W_2\operatorname{Diag}(\bar\beta_h)W_1\Delta u.
 }
 \tag{B}
-$
+$$
 
 当 $\phi$ 为 GELU 时，$\bar\beta$ 不必都非负，须使用实际的导数。由于 norm2 是非线性的，**$\Delta u\neq\operatorname{Diag}(1+e_4)U_h$**，正确式子是：
 
-$
+$$
 \Delta u=\left[\operatorname{norm2}(c^+)-\operatorname{norm2}(c^-)\right]\odot(1+e_4).
-$
+$$
 
 式 (B) 与 Q1r2 使用的增量算子具有相同的数学骨架，但本项目保留输入对所决定的真实 $\bar\beta_h$，不把它替换为校准的固定 $\alpha$。
 
@@ -146,26 +146,26 @@ $
 
 沿 $c_\tau=c^-+\tau U_h$，对一个 FFN 通道有：
 
-$
+$$
 \Delta m_j=
 \int_0^1
 \phi'(a_j(T_s(c_\tau)))\,
 w_j^\top J_{T_s}(c_\tau)U_h\,d\tau.
 \tag{C}
-$
+$$
 
 所以影响由 **head 写入方向 → norm/AdaLN 的切向变换 → W1 读取 → GELU 局部斜率 → W2 写入与门控** 决定。对已有 Wan 权重，这些项可分别记录。
 
 若忽略归一化的可学习仿射参数，带 epsilon 的 LayerNorm Jacobian：
 
-$
+$$
 J_{\rm LN}(c)=\frac1{\sigma_\epsilon}
 \left[
 P-\frac{\tilde c\tilde c^\top}{d\sigma_\epsilon^2}
 \right],
 \quad
 P=I-\frac{\mathbf1\mathbf1^\top}{d},
-$
+$$
 
 其中 $\tilde c=Pc$，$\sigma_\epsilon^2=\|\tilde c\|_2^2/d+\epsilon$。实际 Wan norm2 的完整 Jacobian 还应包含其 affine 参数。这个表达解释了为什么较大的 $U_h$ 可能主要落在归一化不敏感方向，或被后续 W1/W2 重新定向。**这是候选机制，不是当前已测 Wan 结果。**
 
@@ -173,11 +173,11 @@ $
 
 定义：
 
-$
+$$
 \kappa_h=
 \frac{\left\|\sum_jD_{hj}\right\|_2}
 {\sum_j\|D_{hj}\|_2+\epsilon}.
-$
+$$
 
 较小 $\kappa$ 表示原始通道写入间存在强抵消；必须同时报告分子和分母规模，否则小数值也可能只是所有写入都接近零。注意这种分解依赖原始 FFN 隐藏基底，跨模型或重参数化比较应转向输出子空间等坐标不敏感对象。
 
@@ -185,11 +185,11 @@ $
 
 令 $B^-=B(c^-)$。对候选 FFN 通道集合 $S$，构造：
 
-$
+$$
 \boxed{B(d,S)=B^-+dU_h+\sum_{j\in S}D_{hj}},
 \quad d\in\{0,1\}.
 \tag{D}
-$
+$$
 
 关键四组：
 
@@ -204,18 +204,18 @@ $
 
 令 $Q$ 是后续网络中的明确代理评分或最终视频的运动观测，则可以比较：
 
-$
+$$
 E_{\rm FFN}(S)=Q(B(0,S))-Q(B(0,\varnothing)),
-$
+$$
 
-$
+$$
 E_{\rm direct}=Q(B(1,\varnothing))-Q(B(0,\varnothing)),
-$
+$$
 
-$
+$$
 I(S)=Q(B(1,S))-Q(B(1,\varnothing))
 -Q(B(0,S))+Q(B(0,\varnothing)).
-$
+$$
 
 后续网络和采样器非线性使 $I(S)$ 可以不为零，即使式 (A) 的 block 差分是精确加法式。
 
@@ -225,19 +225,19 @@ $
 
 令 $\mathcal B_\ell$ 为完整 block。对残差扰动的一阶传播：
 
-$
+$$
 \Delta x_k\approx
 J_{\mathcal B_k}\cdots J_{\mathcal B_{\ell+1}}\Delta x_\ell.
-$
+$$
 
 这个 Jacobian 作用于**全部时空 tokens**，self-attention 引入跨 token/跨帧耦合，不能使用逐 token 的独立 Jacobian 代替。实际计算使用 JVP/VJP，不显式构建高阶稠密矩阵；每条重要推断仍需有限幅度 activation patching 验证。
 
 如果 $Q$ 是可微的运动代理读出，可用一阶筛选分数：
 
-$
+$$
 S_{hj}=\sum_{p\in\mathcal R}
 \langle\nabla_{B_p}Q,D_{hjp}\rangle.
-$
+$$
 
 $S_{hj}$ 表示固定状态附近对特定代理目标的局部敏感性，**不是**通道对最终物理运动的真实因果效应，且正负贡献可能抵消。
 
@@ -250,35 +250,35 @@ $S_{hj}$ 表示固定状态附近对特定代理目标的局部敏感性，**不
 
 对标准 classifier-free guidance：
 
-$
+$$
 v_{\rm CFG}=v_u+w(v_c-v_u).
-$
+$$
 
 当 head 干预改变两条分支：
 
-$
+$$
 \Delta v_{\rm CFG}=w\Delta v_c+(1-w)\Delta v_u.
-$
+$$
 
 必须测试 conditional-only、unconditional-only、both，并锁定每次调用的 branch 身份；不能仅根据调度步序号猜测 branch。作者原始 head 消融补丁并未默认区分这两条路径。
 
 完整生成映射还包含采样器隐状态 $H_s$：
 
-$
+$$
 (z_{s+1},H_{s+1})=
 \Phi_s(z_s,H_s,v_{{\rm CFG},s}).
-$
+$$
 
 若使用 UniPC 等多步积分器，配对干预必须从同一 $(z_s,H_s)$ 快照继续，而非只重用 latent；并保留随机状态、noise schedule、模型模式与完整生成配置。
 
 最终效应：
 
-$
+$$
 \Delta \mathcal M=
 \mathcal M\!\left(\operatorname{Decode}(\operatorname{Continue}(B^+))\right)
 -
 \mathcal M\!\left(\operatorname{Decode}(\operatorname{Continue}(B^-))\right).
-$
+$$
 
 检测到物体消失/严重变形时，应记录为另一个结果类型，不把它算成“运动更小/更稳定”。
 
@@ -292,7 +292,7 @@ $
 
 只有原始 FFN 通道或线性方向不足以支撑可复核回路时，才考虑训练 timestep-conditioned transcoder。此时可考虑同时约束正常输出与 head-induced 差分：
 
-$
+$$
 \mathcal L=
 \lambda_{\rm recon}\|F(u)-\widehat F(u)\|^2
 +
@@ -300,7 +300,7 @@ $
 \|\Delta F_h-\Delta\widehat F_h\|^2
 +
 \lambda_{\rm sparse}\|z\|_1.
-$
+$$
 
 其归因是否精确，取决于是否构造冻结的局部替代模型及其误差；不能混同于原始 Wan 的精确式 (A)。
 
