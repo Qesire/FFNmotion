@@ -22,7 +22,7 @@
 - 头组消融证明的是组合作用，不自动给出单头贡献；
 - 时间调制 RoPE 具有干预效果，不唯一证明 RoPE 是所有物理错误的根因；单频 RoPE logit 可含余弦振荡而非严格单调的距离衰减；
 - “训练 FFN LoRA 无额外益处”与“原 FFN 不承载运动功能”不是相同命题；
-- 原 head 消融函数在合并每个 head 的输出前置零，然后执行 \`cross_attn.o\`，但补丁没有默认显式处理 cond/uncond 分支，需要补实验。
+- 原 head 消融函数在合并每个 head 的输出前置零，然后执行 `cross_attn.o`，但补丁没有默认显式处理 cond/uncond 分支，需要补实验。
 
 **对本项目的用途**：源候选 head、作者设置复核、行为实验起点。先复核真实单头效应，再展开 FFN 路径分析。不要直接给 L15H2/L9H7 贴因果强弱标签：公开脚本里的分组与早期讨论所用的标签不一致。
 
@@ -69,19 +69,19 @@
 
 ### 2.1 Wan2.1 官方模型
 
-- [T2V 1.3B 配置](https://github.com/Wan-Video/Wan2.1/blob/main/wan/configs/wan_t2v_1_3B.py)：\`dim=1536, ffn_dim=8960, num_heads=12, num_layers=30, patch_size=(1,2,2), qk_norm=True, cross_attn_norm=True\`。
+- [T2V 1.3B 配置](https://github.com/Wan-Video/Wan2.1/blob/main/wan/configs/wan_t2v_1_3B.py)：`dim=1536, ffn_dim=8960, num_heads=12, num_layers=30, patch_size=(1,2,2), qk_norm=True, cross_attn_norm=True`。
 - [Wan 模型实现](https://github.com/Wan-Video/Wan2.1/blob/main/wan/modules/model.py)：
-  - \`WanAttentionBlock.forward\`：self-attention 残差 → cross-attention 残差 → norm2/AdaLN → FFN → 门控残差；
-  - \`WanT2VCrossAttention.forward\`：Q/K/V、flash_attention、flatten heads、\`self.o\`；
-  - \`ffn = nn.Sequential(nn.Linear(dim,ffn_dim), nn.GELU(approximate='tanh'), nn.Linear(ffn_dim,dim))\`。
-- 注意源码 \`norm3\` 位于 cross-attention 之前，\`norm2\` 位于 FFN 之前；其他论文附录的归一化编号可能不同。
+  - `WanAttentionBlock.forward`：self-attention 残差 → cross-attention 残差 → norm2/AdaLN → FFN → 门控残差；
+  - `WanT2VCrossAttention.forward`：Q/K/V、flash_attention、flatten heads、`self.o`；
+  - `ffn = nn.Sequential(nn.Linear(dim,ffn_dim), nn.GELU(approximate='tanh'), nn.Linear(ffn_dim,dim))`。
+- 注意源码 `norm3` 位于 cross-attention 之前，`norm2` 位于 FFN 之前；其他论文附录的归一化编号可能不同。
 
 这些是源码结构，不证明任何一个通道已经被实验识别为运动通道。必须读取真实模型权重的 forward 数据才能做算子验收。
 
 ### 2.2 原论文实验复用
 
 - 作者脚本固定的第一组 T2V 1.3B 配置：frame_num=81、size=832×480、sampling_steps=50、shift=5.0、guidance_scale=5.0。
-- 代码中按 \`LxHy\`（0-based）指定 head，既支持全部去噪步也支持特定步。
+- 代码中按 `LxHy`（0-based）指定 head，既支持全部去噪步也支持特定步。
 - 基础补丁对每个选定 head 的 flash-attention 输出置零；其默认对象是所选整个模型的交叉注意力调用，而非分别筛选 CFG 分支。
 - 复现中不可把作者注释性的头组分级看作经过本项目复核的单头行为标签。
 
