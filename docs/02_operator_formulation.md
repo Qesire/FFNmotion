@@ -69,7 +69,7 @@ z_{hpa}=\sum_q A_{hpq}V_{hqa},\qquad z_{hp}\in\mathbb R^{128}.
 c^+=c^-+U_h.
 \]
 
-输出投影的共享 bias 在差分中抵消。实现时参考作者 [head ablation](https://github.com/Siriuslala/physics/blob/main/wan21_t2v_experiments/cross_attn_head_ablation.py)：在展平 heads、调用 \`cross_attn.o\` 之前置零指定 head。对 T2V 不应误用包含图像 context 的 I2V cross-attention 路径。
+输出投影的共享 bias 在差分中抵消。实现时参考作者 [head ablation](https://github.com/Siriuslala/physics/blob/main/wan21_t2v_experiments/cross_attn_head_ablation.py)：在展平 heads、调用 `cross_attn.o` 之前置零指定 head。对 T2V 不应误用包含图像 context 的 I2V cross-attention 路径。
 
 ## 3. Head → FFN 隐藏通道的精确有限差分
 
@@ -308,16 +308,16 @@ v_{\rm CFG}=v_u+w(v_c-v_u).
 
 **实际源码绑定**：
 
-- Wan block: \`wan/modules/model.py::WanAttentionBlock.forward\`
-- Head: \`WanT2VCrossAttention.forward\` 内 flash_attention 之后、\`self.o\` 之前的逐头激活
-- FFN 前状态: \`cross_attn_ffn\` 中 cross-attention 残差加法之后、\`norm2\` 之前
-- FFN 隐藏: \`ffn[0]\`、\`ffn[1]\`；写回: \`ffn[2]\` 与门控 \`e[5]\`
+- Wan block: `wan/modules/model.py::WanAttentionBlock.forward`
+- Head: `WanT2VCrossAttention.forward` 内 flash_attention 之后、`self.o` 之前的逐头激活
+- FFN 前状态: `cross_attn_ffn` 中 cross-attention 残差加法之后、`norm2` 之前
+- FFN 隐藏: `ffn[0]`、`ffn[1]`；写回: `ffn[2]` 与门控 `e[5]`
 
 采集时必须保证 \(z_h\)、\(c^+\)、\(e_3/e_4/e_5\) 来自同一模型调用、同一 layer/step/branch、同一 token 布局；完整记录 dtype、shape、模型权重身份、seed。跨 batch CFG、梯度 checkpoint、model offload 的具体生命周期需要运行时预检。
 
 **模块验收**：
 1. 未干预 monkey patch 与原模型输出在相同数值容差内一致。
-2. 重建的 \(\sum_h U_h+\text{output-bias}\) 等于 \`cross_attn.o\` 的实际输出。
+2. 重建的 \(\sum_h U_h+\text{output-bias}\) 等于 `cross_attn.o` 的实际输出。
 3. 重新计算的 \(F(T_s(c^+))\) 与捕获的 FFN 输出一致。
 4. 式 (A) 与 \(B(1,S_{\rm all})=B^+\) 成立，报告相对误差与最大绝对误差。
 5. Top-K 只改变目标 FFN hidden increment，其他原始状态与路径保持固定。
