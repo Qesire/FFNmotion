@@ -58,8 +58,8 @@
 
 在同一层、同一状态中捕获：
 
-- head pre-output \`z_h\` 与投影列块 \`W_O^(h)\`；得到 \(U_h\)；
-- cross-attention 前后状态、FFN 前 \`c^+\`、time modulation \(e_3/e_4/e_5\)；
+- head pre-output `z_h` 与投影列块 `W_O^(h)`；得到 \(U_h\)；
+- cross-attention 前后状态、FFN 前 `c^+`、time modulation \(e_3/e_4/e_5\)；
 - 有/无 head 的 norm2/AdaLN、Linear1、GELU、Linear2，得到 \(\Delta a_j,\Delta m_j,D_{hj}\)；
 - 全通道写入的合成 \(\sum_jD_{hj}\)，对照真实 block 差分。
 
